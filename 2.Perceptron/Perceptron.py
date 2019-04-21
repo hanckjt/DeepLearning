@@ -1,5 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import sys, os
+from PIL import Image
+
+sys.path.append(os.path.join(os.pardir, 'BookSource'))
+from dataset.mnist import load_mnist
 
 
 def step(x):
@@ -51,21 +56,61 @@ def sigmoid(x):
 	return 1 / (1 + exp(-x))
 
 
-if __name__ == '__main__':
-	x = np.arange(-6, 6, 0.1)
-	y_sigmoid = sigmoid(x)
-	y_step = step(x)
+def relu(x):
+	return np.maximum(0, x)
 
-	plt.plot(x, y_sigmoid, label = 'Sigmoid')
-	plt.plot(x, y_step, '--', label = 'Step')
+
+def identity(x):
+	return x
+
+
+def softmax(a):
+	c = np.max(a)
+	exp_a = exp(a - c)
+	sum_exp_a = np.sum(exp_a)
+	y = exp_a / sum_exp_a
+	print(np.sum(y))
+	return y
+
+
+def init_network():
+	network = {}
+
+
+def forward(network, x):
+	pass
+
+
+def show_functions_plt():
+	funs_list = [step, relu, sigmoid, softmax]
+
+	plt.ylim(top = 1)
+
+	x = np.arange(-10, 10, 0.1)
+
+	for fun in funs_list:
+		y = fun(x)
+		plt.plot(x, y, label = fun.__name__)
 
 	plt.yticks(np.arange(0, 1.1, 0.1))
-	plt.xticks(np.arange(-6, 8, 2))
-	plt.axvline(0, color = 'red', linewidth = 0.5, linestyle = '--')
-	plt.axhline(0.5, color = 'red', linewidth = 0.5, linestyle = '--')
+	plt.xticks(np.arange(-10, 12, 2))
+	plt.axvline(0, color = 'red', linewidth = 0.5)
+	plt.axhline(0.5, color = 'red', linewidth = 0.5)
 	plt.plot(0, 0.5, 'ro')
 
-	plt.title('Sigmoid')
+	plt.title('Mix')
 	plt.grid(True)
 	plt.legend()
 	plt.show()
+
+
+def show_img(img):
+	pil_img = Image.fromarray(np.uint8(img))
+	pil_img.show()
+
+
+if __name__ == '__main__':
+	(x_train, t_train), (x_test, t_test) = load_mnist(flatten = True, normalize = False)
+	img, label = x_train[0], t_train[0]
+	img = img.reshape(28, 28)
+	show_img(img)
