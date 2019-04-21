@@ -1,12 +1,13 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 
-def ACT(x):
-	return (1 if x > 0 else 0)
+def step(x):
+	return (x > 0).astype(np.int)
 
 
 def PERC(x, w, b):
-	return ACT(np.sum(x * w) + b)
+	return step(np.sum(x * w) + b)
 
 
 def OR(x1, x2):
@@ -32,4 +33,39 @@ def XOR(x1, x2):
 	return AND(NAND(x1, x2), OR(x1, x2))
 
 
-print(XOR(0, 1))
+def get_e(x = 1000, s = False):
+	if s:
+		e = np.e
+	else:
+		e = (1 + 1 / x) ** x
+
+	return e
+
+
+def exp(x):
+	e = get_e(s = True)
+	return e ** x
+
+
+def sigmoid(x):
+	return 1 / (1 + exp(-x))
+
+
+if __name__ == '__main__':
+	x = np.arange(-6, 6, 0.1)
+	y_sigmoid = sigmoid(x)
+	y_step = step(x)
+
+	plt.plot(x, y_sigmoid, label = 'Sigmoid')
+	plt.plot(x, y_step, '--', label = 'Step')
+
+	plt.yticks(np.arange(0, 1.1, 0.1))
+	plt.xticks(np.arange(-6, 8, 2))
+	plt.axvline(0, color = 'red', linewidth = 0.5, linestyle = '--')
+	plt.axhline(0.5, color = 'red', linewidth = 0.5, linestyle = '--')
+	plt.plot(0, 0.5, 'ro')
+
+	plt.title('Sigmoid')
+	plt.grid(True)
+	plt.legend()
+	plt.show()
