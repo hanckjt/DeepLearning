@@ -24,7 +24,7 @@ class DrawFuctionPlot:
     def draw(self):
         plt.ylim(top=self.yLim)
 
-        x = np.arange(self.xMin, self.xMax, self.xStep)
+        x = np.arange(self.xMin, self.xMax+self.xStep, self.xStep)
 
         for fun in self.funsList:
             y = fun(x)
