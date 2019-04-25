@@ -99,8 +99,11 @@ def softmax(a):
     exp_a = exp(a - c)
     sum_exp_a = np.sum(exp_a)
     y = exp_a / sum_exp_a
-    print(np.sum(y))
     return y
+
+
+def log(x):
+    return np.log(x)
 
 
 if __name__ == '__main__':
@@ -109,5 +112,6 @@ if __name__ == '__main__':
     dp.addFunction(sigmoid)
     dp.addFunction(relu)
     dp.addFunction(softmax)
+    dp.addFunction(log)
 
     dp.draw()
