@@ -1,4 +1,5 @@
 import numpy as np
+
 import matplotlib.pyplot as plt
 import sys, os
 from PIL import Image
@@ -10,120 +11,217 @@ from Perceptron.Perceptron import *
 
 
 def mean_squared_error(y, t):
-    return 0.5 * np.sum((y - t) ** 2)
+	return 0.5 * np.sum((y - t) ** 2)
+
 
 
 def cross_entropy_error(y, t):
-    d = 1e-7
-    if y.ndim == 1:
-        y = y.reshape(1, y.size)
-        t = t.reshape(1, t.size)
+	if y.ndim == 1:
+		t = t.reshape(1, t.size)
+		y = y.reshape(1, y.size)
 
-    batch_size = y.shape[0]
-    return -np.sum(np.log(y[np.arange(batch_size), t] + d)) / batch_size
+	# 监督数据是one-hot-vector的情况下，转换为正确解标签的索引
+	if t.size == y.size:
+		t = t.argmax(axis = 1)
+
+	batch_size = y.shape[0]
+	return -np.sum(np.log(y[np.arange(batch_size), t] + 1e-7)) / batch_size
+
+
+def _cross_entropy_error(y, t):
+	d = 1e-7
+	if y.ndim == 1:
+		y = y.reshape(1, y.size)
+		t = t.reshape(1, t.size)
+
+	if t.size == y.size:
+		t = t.argmax(axis = 1)
+
+	batch_size = y.shape[0]
+	return -np.sum(np.log(y[np.arange(batch_size), t] + d)) / batch_size
 
 
 def tangent(f, x):
-    d = numerical_diff(f, x)
-    y = f(x) - d * x
-    return lambda t: d * t + y
+	d = numerical_diff(f, x)
+	y = f(x) - d * x
+	return lambda t: d * t + y
 
 
 def _numerical_diff_num(f, x):
-    h = 1e-7
-    return (f(x + h) - f(x - h)) / (2 * h)
+	h = 1e-7
+	return (f(x + h) - f(x - h)) / (2 * h)
 
 
 def _numerical_diff_array(f, x):
-    h = 1e-7
-    return np.array([(f(t + h) - f(t - h)) / (2 * h) for t in x])
+	h = 1e-7
+	return np.array([(f(t + h) - f(t - h)) / (2 * h) for t in x])
 
 
 def numerical_diff(f, x):
-    if isinstance(x, float) or isinstance(x, int):
-        return _numerical_diff_num(f, x)
+	if isinstance(x, float) or isinstance(x, int):
+		return _numerical_diff_num(f, x)
 
-    return _numerical_diff_array(f, x)
+	return _numerical_diff_array(f, x)
 
 
 def numerical_gradient(f, x):
-    grad = np.array([numerical_diff(f, t) for t in x])
-    return grad
+	grad = np.array([numerical_diff(f, t) for t in x])
+	return grad
 
 
-def gradient_descent(f, init_x, lr=0.01, step_num=100):
-    x = init_x
+def gradient_descent(f, init_x, lr = 0.01, step_num = 100):
+	x = init_x
 
-    for i in range(step_num):
-        grad = numerical_gradient(f, x)
-        print('x:', x)
-        x -= lr * grad
+	for i in range(step_num):
+		grad = numerical_gradient(f, x)
+		print('x:', x)
+		x -= lr * grad
 
-    return x
+	return x
 
 
 def fun_2(x):
-    r = np.sum(x ** 2)
-    return r
+	r = np.sum(x ** 2)
+	return r
 
 
 def fun_1(x):
-    return x ** 2
+	return x ** 2
 
 
 class simpleNet:
-    def __init__(self):
-        self.W = np.random.randn(2, 3)
+	def __init__(self):
+		self.W = np.random.randn(2, 3)
 
-    def predict(self, x):
-        return np.dot(x, self.W)
+	def predict(self, x):
+		return np.dot(x, self.W)
 
-    def loss(self, x, t):
-        z = self.predict(x)
-        y = softmax(z)
-        return cross_entropy_error(y, t)
+	def loss(self, x, t):
+		z = self.predict(x)
+		y = softmax(z)
+		return cross_entropy_error(y, t)
+
+
+
+class TwoLayerNet:
+	def __init__(self, input_size, hidden_size, output_size, weight_init_std = 0.01):
+		self.params = {}
+		self.params['W1'] = weight_init_std * np.random.randn(input_size, hidden_size)
+		self.params['b1'] = np.zeros(hidden_size)
+		self.params['W2'] = weight_init_std * np.random.randn(hidden_size, output_size)
+		self.params['b2'] = np.zeros(output_size)
+
+
+	def predict(self, x):
+		W1, W2 = self.params['W1'], self.params['W2']
+		b1, b2 = self.params['b1'], self.params['b2']
+
+		a1 = np.dot(x, W1) + b1
+		z1 = sigmoid(a1)
+		a2 = np.dot(z1, W2) + b2
+		y = softmax(a2)
+
+		return y
+
+
+	def loss(self, x, t):
+		y = self.predict(x)
+
+		return cross_entropy_error(y, t)
+
+
+	def accuracy(self, x, t):
+		y = self.predict(x)
+		y = np.argmax(y, axis = 1)
+		t = np.argmax(t, axis = 1)
+
+		a = (np.sum(y == t) / float(x.shape[0]))
+		return a
+
+	def numerical_gradient(self, x, t):
+		loss_W = lambda W: self.loss(x, t)
+
+		grads = Dict.empty()
+		grads['W1'] = numerical_gradient(loss_W, self.params['W1'])
+		grads['b1'] = numerical_gradient(loss_W, self.params['b1'])
+		grads['W2'] = numerical_gradient(loss_W, self.params['W2'])
+		grads['b2'] = numerical_gradient(loss_W, self.params['b2'])
+
+		return grads
+
+
+	def gradient(self, x, t):
+		W1, W2 = self.params['W1'], self.params['W2']
+		b1, b2 = self.params['b1'], self.params['b2']
+		grads = {}
+
+		batch_num = x.shape[0]
+
+		# forward
+		a1 = np.dot(x, W1) + b1
+		z1 = sigmoid(a1)
+		a2 = np.dot(z1, W2) + b2
+		y = softmax(a2)
+
+		# backward
+		dy = (y - t) / batch_num
+		grads['W2'] = np.dot(z1.T, dy)
+		grads['b2'] = np.sum(dy, axis = 0)
+
+		da1 = np.dot(dy, W2.T)
+		dz1 = sigmoid_grad(a1) * da1
+		grads['W1'] = np.dot(x.T, dz1)
+		grads['b1'] = np.sum(dz1, axis = 0)
+
+		return grads
 
 
 if __name__ is '__main__':
-    (x_train, t_train), (x_test, t_test) = load_mnist(normalize=True, one_hot_label=True)
+	(x_train, t_train), (x_test, t_test) = load_mnist(normalize = True, one_hot_label = True)
 
-    train_size = x_train.shape[0]
-    batch_size = 10
-    batch_mask = np.random.choice(train_size, batch_size)
+	train_loss_list = []
+	train_acc_list = []
+	test_acc_list = []
 
-    x_batch = x_train[batch_mask]
-    t_batch = t_train[batch_mask]
+	iters_num = 10000
+	train_size = x_train.shape[0]
+	batch_size = 100
+	learning_rate = 0.1
 
-    dp = DrawFuctionPlot()
-    dp.setXAxis(-1, 1, 0.1)
-    dp.addFunction(fun_1)
-    dp.addFunction(tangent(fun_1, 0.5))
-    dp.draw()
+	net = TwoLayerNet(input_size = 784, hidden_size = 50, output_size = 10)
 
-    x0 = np.arange(-2, 2.5, 0.25)
-    x1 = np.arange(-2, 2.5, 0.25)
-    X, Y = np.meshgrid(x0, x1)
+	print('Begin Train!')
+	iter_per_epoch = max(train_size / batch_size, 1)
 
-    X = X.flatten()
-    Y = Y.flatten()
+	for i in range(iters_num):
+		batch_mask = np.random.choice(train_size, batch_size)
+		x_batch = x_train[batch_mask]
+		t_batch = t_train[batch_mask]
 
-    grad = numerical_gradient(fun_2, np.array([X, Y]))
+		grad = net.gradient(x_batch, t_batch)
 
-    plt.figure()
-    plt.quiver(X, Y, -grad[0], -grad[1], angles="xy", color="#666666")  # ,headwidth=10,scale=40,color="#444444")
-    plt.xlim([-2, 2])
-    plt.ylim([-2, 2])
-    plt.xlabel('x0')
-    plt.ylabel('x1')
-    plt.grid()
-    plt.legend()
-    plt.draw()
-    plt.show()
+		for key in ('W1', 'b1', 'W2', 'b2'):
+			net.params[key] -= learning_rate * grad[key]
 
-    net = simpleNet()
-    print(net.W)
-    x = np.array([0.6, 0.9])
-    p = net.predict(x)
-    print(p)
-    t= np.array([0, 0, 1])
-    print( net.loss(x, t) )
+		loss = net.loss(x_batch, t_batch)
+		train_loss_list.append(loss)
+
+		if i % iter_per_epoch == 0:
+			train_acc = net.accuracy(x_train, t_train)
+			test_acc = net.accuracy(x_test, t_test)
+			train_acc_list.append(train_acc)
+			test_acc_list.append(test_acc)
+			print("Process:{:.0f}%, TrainAcc:{:.2f}%,, TestAcc:{:.2f}%".format((i / iters_num) * 100, train_acc * 100, test_acc * 100))
+
+	plt.figure()
+	plt.title('Loss')
+	plt.plot(np.arange(0, iters_num, 1), train_loss_list, label = 'TrainLoss')
+	plt.legend()
+
+	plt.figure()
+	plt.title('Accuracy')
+	plt.plot(np.arange(len(train_acc_list)), train_acc_list, label = 'TrainAcc')
+	plt.plot(np.arange(len(test_acc_list)), test_acc_list, label = 'TestAcc')
+	plt.legend()
+
+	plt.show()
