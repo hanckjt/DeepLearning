@@ -213,8 +213,7 @@ def trainNetwork():
     return net
 
 
-if __name__ is '__main__':
-    fileName = 'mnist_network.nur'
+def getNetwork(fileName):
     try:
         netPickle = open(fileName, 'rb')
         net = pickle.load(netPickle)
@@ -224,8 +223,11 @@ if __name__ is '__main__':
         pickle.dump(net, netPickle)
 
     netPickle.close()
+    return net
 
+
+if __name__ is '__main__':
     app = wx.App()
-    frame = MnistTest.MnistTestWindow(net)
+    frame = MnistTest.MnistTestWindow(getNetwork('mnist_network.nur'))
     frame.Show()
     app.MainLoop()
