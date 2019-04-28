@@ -200,25 +200,20 @@ class SoftmaxWithLoss:
 
 
 class MultiLayerNet:
-    def __init__(self, input_size, hiddens_size, output_size, weight_init_std=0.01):
+    def __init__(self, neurals_size, weight_init_std=0.01):
         self.params = []
         self.layers = []
-        # input
-        self.params.append(weight_init_std * np.random.randn(input_size, hiddens_size[0]))
-        self.params.append(np.zeros(hiddens_size[0]))
-        self.layers.append(Affine(self.params[0], self.params[1]))
-        self.layers.append(Relu())
-        # hiddens
-        for i in range(1, len(hiddens_size)):
-            self.params.append(np.random.randn(hiddens_size[i - 1], hiddens_size[i]))
-            self.params.append(np.zeros(hiddens_size[i]))
-            self.layers.append(Affine(self.params[i + 1], self.params[i + 2]))
-            self.layers.append(Relu())
-        # output
-        self.params.append(np.random.randn(hiddens_size[-1], output_size))
-        self.params.append(np.zeros(output_size))
-        self.layers.append(Affine(self.params[-2], self.params[-1]))
-        self.lastLayer = SoftmaxWithLoss()
+
+        for i in range(0, len(neurals_size) - 1):
+            W = weight_init_std * np.random.randn(neurals_size[i], neurals_size[i + 1])
+            b = np.zeros(neurals_size[i + 1])
+            self.params.append(W)
+            self.params.append(b)
+            self.layers.append(Affine(W, b))
+            if i < len(neurals_size) - 2:
+                self.layers.append(Relu())
+
+        self.lastLayer = SoftmaxWithLoss()  # output
 
     def predict(self, x):
         float_array = False
@@ -287,12 +282,12 @@ def trainNetwork():
     train_acc_list = []
     test_acc_list = []
 
-    iters_num = 20000
+    iters_num = 10000
     train_size = x_train.shape[0]
-    batch_size = 200
-    learning_rate = 0.1
+    batch_size = 100
+    learning_rate = 0.2
 
-    net = MultiLayerNet(input_size=784, hiddens_size=[50], output_size=10)
+    net = MultiLayerNet(neurals_size=[784, 50, 40, 30, 10])
 
     iter_per_epoch = max(train_size / batch_size, 1)
 
@@ -315,12 +310,15 @@ def trainNetwork():
             test_acc = net.accuracy(x_test, t_test)
             train_acc_list.append(train_acc)
             test_acc_list.append(test_acc)
-            print("Process:{:.0f}%, TrainAcc:{:.2f}%,, TestAcc:{:.2f}%".format((i / iters_num) * 100, train_acc * 100, test_acc * 100))
+            print("Process:{:.0f}%, TrainAcc:{:.2f}%,, TestAcc:{:.2f}%".format((i / iters_num) * 100, train_acc * 100,
+                                                                               test_acc * 100))
 
     return net
 
 
 def getNetwork(fileName):
+    return trainNetwork()
+
     try:
         netPickle = open(fileName, 'rb')
         net = pickle.load(netPickle)
