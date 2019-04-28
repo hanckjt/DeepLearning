@@ -9,7 +9,6 @@ import pickle
 sys.path.append(os.path.join(os.pardir))
 sys.path.append(os.path.join(os.pardir, 'BookSource'))
 from dataset.mnist import load_mnist
-from Perceptron.Perceptron import *
 from MnistTest import MnistTest
 
 
@@ -17,20 +16,18 @@ def mean_squared_error(y, t):
     return 0.5 * np.sum((y - t) ** 2)
 
 
+def softmax(x):
+    if x.ndim == 2:
+        x = x.T
+        x = x - np.max(x, axis=0)
+        y = np.exp(x) / np.sum(np.exp(x), axis=0)
+        return y.T
+
+    x = x - np.max(x)  # 溢出对策
+    return np.exp(x) / np.sum(np.exp(x))
+
+
 def cross_entropy_error(y, t):
-    if y.ndim == 1:
-        t = t.reshape(1, t.size)
-        y = y.reshape(1, y.size)
-
-    # 监督数据是one-hot-vector的情况下，转换为正确解标签的索引
-    if t.size == y.size:
-        t = t.argmax(axis=1)
-
-    batch_size = y.shape[0]
-    return -np.sum(np.log(y[np.arange(batch_size), t] + 1e-7)) / batch_size
-
-
-def _cross_entropy_error(y, t):
     d = 1e-7
     if y.ndim == 1:
         y = y.reshape(1, y.size)
@@ -82,93 +79,203 @@ def gradient_descent(f, init_x, lr=0.01, step_num=100):
     return x
 
 
-def fun_2(x):
-    r = np.sum(x ** 2)
-    return r
-
-
-def fun_1(x):
-    return x ** 2
-
-
-class simpleNet:
+class MulLayer:
     def __init__(self):
-        self.W = np.random.randn(2, 3)
+        self.x = None
+        self.y = None
+
+    def forward(self, x, y):
+        self.x = x
+        self.y = y
+        out = x * y
+
+        return out
+
+    def backward(self, dout):
+        dx = dout * self.y
+        dy = dout * self.x
+
+        return dx, dy
+
+
+class AddLayer:
+    def __init__(self):
+        pass
+
+    def forward(self, x, y):
+        out = x + y
+
+        return out
+
+    def backward(self, dout):
+        dx = dout * 1
+        dy = dout * 1
+
+        return dx, dy
+
+
+class Relu:
+    def __init__(self):
+        self.mask = None
+
+    def forward(self, x):
+        self.mask = (x <= 0)
+        out = x.copy()
+        out[self.mask] = 0
+
+        return out
+
+    def backward(self, dout):
+        dout[self.mask] = 0
+        dx = dout
+
+        return dx
+
+
+class Sigmoid:
+    def __init__(self):
+        self.out = None
+
+    def forward(self, x):
+        self.out = 1 / (1 + np.exp(-x))
+
+        return self.out
+
+    def backward(self, dout):
+        dx = dout * (1.0 - self.out) * self.out
+
+        return dx
+
+
+class Affine:
+    def __init__(self, W, b):
+        self.W = W
+        self.b = b
+        self.x = None
+        self.original_x_shape = None
+        self.dW = None
+        self.db = None
+
+    def forward(self, x):
+        self.original_x_shape = x.shape
+        x = x.reshape(x.shape[0], -1)
+        self.x = x
+
+        out = np.dot(self.x, self.W) + self.b
+
+        return out
+
+    def backward(self, dout):
+        dx = np.dot(dout, self.W.T)
+        self.dW = np.dot(self.x.T, dout)
+        self.db = np.sum(dout, axis=0)
+        dx = dx.reshape(*self.original_x_shape)
+
+        return dx
+
+
+class SoftmaxWithLoss:
+    def __init__(self):
+        self.loss = None
+        self.y = None
+        self.t = None
+
+    def forward(self, x, t):
+        self.t = t
+        self.y = softmax(x)
+        self.loss = cross_entropy_error(self.y, self.t)
+
+        return self.loss
+
+    def backward(self, dout=1):
+        batch_size = self.t.shape[0]
+        if self.t.size == self.y.size:
+            dx = (self.y - self.t) / batch_size
+        else:
+            dx = self.y.copy()
+            dx[np.arange(batch_size), self.t] -= 1
+            dx = dx / batch_size
+
+        return dx
+
+
+class MultiLayerNet:
+    def __init__(self, input_size, hiddens_size, output_size, weight_init_std=0.01):
+        self.params = []
+        self.layers = []
+        # input
+        self.params.append(weight_init_std * np.random.randn(input_size, hiddens_size[0]))
+        self.params.append(np.zeros(hiddens_size[0]))
+        self.layers.append(Affine(self.params[0], self.params[1]))
+        self.layers.append(Relu())
+        # hiddens
+        for i in range(1, len(hiddens_size)):
+            self.params.append(np.random.randn(hiddens_size[i - 1], hiddens_size[i]))
+            self.params.append(np.zeros(hiddens_size[i]))
+            self.layers.append(Affine(self.params[i + 1], self.params[i + 2]))
+            self.layers.append(Relu())
+        # output
+        self.params.append(np.random.randn(hiddens_size[-1], output_size))
+        self.params.append(np.zeros(output_size))
+        self.layers.append(Affine(self.params[-2], self.params[-1]))
+        self.lastLayer = SoftmaxWithLoss()
 
     def predict(self, x):
-        return np.dot(x, self.W)
+        float_array = False
+        if x.ndim == 1:
+            x = x.reshape(-1, x.shape[0])
+            float_array = True
 
-    def loss(self, x, t):
-        z = self.predict(x)
-        y = softmax(z)
-        return cross_entropy_error(y, t)
+        for layer in self.layers:
+            x = layer.forward(x)
 
+        if float_array:
+            x = softmax(np.reshape(x, x.shape[1]))
 
-class TwoLayerNet:
-    def __init__(self, input_size, hidden_size, output_size, weight_init_std=0.01):
-        self.params = {}
-        self.params['W1'] = weight_init_std * np.random.randn(input_size, hidden_size)
-        self.params['b1'] = np.zeros(hidden_size)
-        self.params['W2'] = weight_init_std * np.random.randn(hidden_size, output_size)
-        self.params['b2'] = np.zeros(output_size)
-
-    def predict(self, x):
-        W1, W2 = self.params['W1'], self.params['W2']
-        b1, b2 = self.params['b1'], self.params['b2']
-
-        a1 = np.dot(x, W1) + b1
-        z1 = sigmoid(a1)
-        a2 = np.dot(z1, W2) + b2
-        y = softmax(a2)
-
-        return y
+        return x
 
     def loss(self, x, t):
         y = self.predict(x)
 
-        return cross_entropy_error(y, t)
+        return self.lastLayer.forward(y, t)
 
     def accuracy(self, x, t):
         y = self.predict(x)
         y = np.argmax(y, axis=1)
-        t = np.argmax(t, axis=1)
+        if t.ndim != 1:
+            t = np.argmax(t, axis=1)
+        a = np.sum(y == t) / float(x.shape[0])
 
-        a = (np.sum(y == t) / float(x.shape[0]))
         return a
 
     def numerical_gradient(self, x, t):
         loss_W = lambda W: self.loss(x, t)
 
-        grads = Dict.empty()
-        grads['W1'] = numerical_gradient(loss_W, self.params['W1'])
-        grads['b1'] = numerical_gradient(loss_W, self.params['b1'])
-        grads['W2'] = numerical_gradient(loss_W, self.params['W2'])
-        grads['b2'] = numerical_gradient(loss_W, self.params['b2'])
+        grads = []
+        for p in self.params:
+            grads.append(numerical_gradient(loss_W, p))
 
         return grads
 
     def gradient(self, x, t):
-        W1, W2 = self.params['W1'], self.params['W2']
-        b1, b2 = self.params['b1'], self.params['b2']
-        grads = {}
-
-        batch_num = x.shape[0]
-
         # forward
-        a1 = np.dot(x, W1) + b1
-        z1 = sigmoid(a1)
-        a2 = np.dot(z1, W2) + b2
-        y = softmax(a2)
+        self.loss(x, t)
 
         # backward
-        dy = (y - t) / batch_num
-        grads['W2'] = np.dot(z1.T, dy)
-        grads['b2'] = np.sum(dy, axis=0)
+        dout = 1
+        dout = self.lastLayer.backward(dout)
 
-        da1 = np.dot(dy, W2.T)
-        dz1 = sigmoid_grad(a1) * da1
-        grads['W1'] = np.dot(x.T, dz1)
-        grads['b1'] = np.sum(dz1, axis=0)
+        grads = []
+        re_layers = self.layers.copy()
+        re_layers.reverse()
+
+        for layer in re_layers:
+            dout = layer.backward(dout)
+            if isinstance(layer, Affine):
+                grads.append(layer.db)
+                grads.append(layer.dW)
+
+        grads.reverse()
 
         return grads
 
@@ -180,16 +287,16 @@ def trainNetwork():
     train_acc_list = []
     test_acc_list = []
 
-    iters_num = 10000
+    iters_num = 20000
     train_size = x_train.shape[0]
-    batch_size = 100
+    batch_size = 200
     learning_rate = 0.1
 
-    net = TwoLayerNet(input_size=784, hidden_size=50, output_size=10)
+    net = MultiLayerNet(input_size=784, hiddens_size=[50], output_size=10)
 
-    print('Begin Train!')
     iter_per_epoch = max(train_size / batch_size, 1)
 
+    print('Begin Train!')
     for i in range(iters_num):
         batch_mask = np.random.choice(train_size, batch_size)
         x_batch = x_train[batch_mask]
@@ -197,8 +304,8 @@ def trainNetwork():
 
         grad = net.gradient(x_batch, t_batch)
 
-        for key in ('W1', 'b1', 'W2', 'b2'):
-            net.params[key] -= learning_rate * grad[key]
+        for idx in range(0, len(net.params)):
+            net.params[idx] -= learning_rate * grad[idx]
 
         loss = net.loss(x_batch, t_batch)
         train_loss_list.append(loss)
