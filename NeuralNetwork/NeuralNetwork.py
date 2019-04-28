@@ -317,8 +317,6 @@ def trainNetwork():
 
 
 def getNetwork(fileName):
-    return trainNetwork()
-
     try:
         netPickle = open(fileName, 'rb')
         net = pickle.load(netPickle)
