@@ -274,44 +274,54 @@ class MultiLayerNet:
 
         return grads
 
+    def train(self, trains, tests, iters_num, batch_size, call_back=None, learning_rate=0.1, print_log=False):
+        x_train, t_train = trains[0], trains[1]
+        x_test, t_test = tests[0], tests[1]
 
-def trainNetwork():
+        train_loss_list = []
+        train_acc_list = []
+        test_acc_list = []
+
+        train_size = x_train.shape[0]
+        iter_per_epoch = max(train_size / batch_size, 1)
+
+        for i in range(iters_num):
+            batch_mask = np.random.choice(train_size, batch_size)
+            x_batch = x_train[batch_mask]
+            t_batch = t_train[batch_mask]
+
+            grad = self.gradient(x_batch, t_batch)
+
+            for idx in range(0, len(self.params)):
+                self.params[idx] -= learning_rate * grad[idx]
+
+            loss = self.loss(x_batch, t_batch)
+            train_loss_list.append(loss)
+
+            train_acc = 0
+            test_acc = 0
+            if i % iter_per_epoch == 0:
+                train_acc = self.accuracy(x_train, t_train)
+                test_acc = self.accuracy(x_test, t_test)
+                train_acc_list.append(train_acc)
+                test_acc_list.append(test_acc)
+                if print_log:
+                    print("Process:{:.0f}%, TrainAcc:{:.2f}%,, TestAcc:{:.2f}%".format((i / iters_num) * 100, train_acc * 100, test_acc * 100))
+
+            if call_back is not None:
+                call_back(i, train_acc, test_acc)
+
+        return train_loss_list, train_acc_list, test_acc_list
+
+
+def trainMnistNetwork():
     (x_train, t_train), (x_test, t_test) = load_mnist(normalize=True, one_hot_label=True)
 
-    train_loss_list = []
-    train_acc_list = []
-    test_acc_list = []
-
-    iters_num = 10000
-    train_size = x_train.shape[0]
-    batch_size = 100
-    learning_rate = 0.2
-
-    net = MultiLayerNet(neurals_size=[784, 50, 40, 30, 10])
-
-    iter_per_epoch = max(train_size / batch_size, 1)
-
-    print('Begin Train!')
-    for i in range(iters_num):
-        batch_mask = np.random.choice(train_size, batch_size)
-        x_batch = x_train[batch_mask]
-        t_batch = t_train[batch_mask]
-
-        grad = net.gradient(x_batch, t_batch)
-
-        for idx in range(0, len(net.params)):
-            net.params[idx] -= learning_rate * grad[idx]
-
-        loss = net.loss(x_batch, t_batch)
-        train_loss_list.append(loss)
-
-        if i % iter_per_epoch == 0:
-            train_acc = net.accuracy(x_train, t_train)
-            test_acc = net.accuracy(x_test, t_test)
-            train_acc_list.append(train_acc)
-            test_acc_list.append(test_acc)
-            print("Process:{:.0f}%, TrainAcc:{:.2f}%,, TestAcc:{:.2f}%".format((i / iters_num) * 100, train_acc * 100,
-                                                                               test_acc * 100))
+    print('Create a Mnist Network')
+    net = MultiLayerNet(neurals_size=[784, 50, 10])
+    print('Begin Training Mnist Network!')
+    net.train(trains=(x_train, t_train), tests=(x_test, t_test), iters_num=10000, batch_size=100, learning_rate=0.1, print_log=True)
+    print('Training Done!')
 
     return net
 
@@ -321,7 +331,7 @@ def getNetwork(fileName):
         netPickle = open(fileName, 'rb')
         net = pickle.load(netPickle)
     except FileNotFoundError:
-        net = trainNetwork()
+        net = trainMnistNetwork()
         netPickle = open(fileName, 'wb')
         pickle.dump(net, netPickle)
 
