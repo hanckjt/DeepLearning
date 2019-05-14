@@ -232,10 +232,9 @@ class MnistTestWindow(wx.Frame):
         self.redraw()
 
     def onPredict(self, e):
-        pd = self.network.predict(self.mnistArray)
+        pd = self.network.predict(self.mnistArray)[0]
         for i in range(len(pd)):
             self.predictRateList[i].SetValue(pd[i]*100)
-        print(pd)
         self.m_statusBar1.SetStatusText('I guest the number is: %d' % np.argmax(pd))
 
     def onPaint(self, e):
@@ -261,7 +260,7 @@ class MnistTestWindow(wx.Frame):
         self.m_drawPanel.Refresh()
 
     def onClose(self, e):
-        quit()
+        self.Destroy()
 
     def onLeftDown(self, event):
         self.isDrawing = True
