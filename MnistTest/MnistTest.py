@@ -39,7 +39,7 @@ class MnistTestWindow(wx.Frame):
 
         sbSizer1.Add(self.m_drawPanel, 1, wx.EXPAND | wx.ALL, 5)
 
-        bSizer1.Add(sbSizer1, 1, wx.ALIGN_CENTER | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL | wx.EXPAND, 5)
+        bSizer1.Add(sbSizer1, 1, wx.ALIGN_CENTER | wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_CENTER_VERTICAL, 5)
 
         sbSizer2 = wx.StaticBoxSizer(wx.StaticBox(self, wx.ID_ANY, u"Result"), wx.VERTICAL)
 
@@ -232,7 +232,7 @@ class MnistTestWindow(wx.Frame):
         self.redraw()
 
     def onPredict(self, e):
-        pd = self.network.predict(self.mnistArray)[0]
+        pd = self.network.predict(self.mnistArray)
         for i in range(len(pd)):
             self.predictRateList[i].SetValue(pd[i]*100)
         self.m_statusBar1.SetStatusText('I guest the number is: %d' % np.argmax(pd))

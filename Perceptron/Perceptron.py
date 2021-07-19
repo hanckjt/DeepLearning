@@ -110,6 +110,6 @@ if __name__ == '__main__':
 
 	dp.addFunction(sigmoid)
 	dp.addFunction(sigmoid_grad)
-	dp.addFunction(softmax)
+	dp.addFunction(relu)
 
 	dp.draw()

@@ -18,10 +18,10 @@ def genarte_maths(num):
         for ri in range(len(result)):
             t_train[i][ri] = ord(result[ri])
 
+        print(f"{express} = {result}")
+
     return (x_train, t_train), (x_test, t_test)
 
-def write_str_to_array(mstr, marr):
-    for i in range(len(mstr)):
-        t_train[i][ri] = ord(result[ri])
 
-print( genarte_maths(10) )
+g = genarte_maths(10)
+print(g)

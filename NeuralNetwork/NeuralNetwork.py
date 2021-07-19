@@ -7,7 +7,7 @@ import wx
 import pickle
 
 sys.path.append(os.path.join(os.pardir))
-sys.path.append(os.path.join(os.pardir, 'BookSource'))
+sys.path.append(os.path.join(os.pardir, 'Books/DeepLearningFromScratch'))
 from dataset.mnist import load_mnist
 from MnistTest import MnistTest
 
@@ -339,7 +339,7 @@ def getNetwork(fileName):
     return net
 
 
-if __name__ is '__main__':
+if __name__ == '__main__':
     app = wx.App()
     frame = MnistTest.MnistTestWindow(getNetwork('mnist_network.nur'))
     frame.Show()
