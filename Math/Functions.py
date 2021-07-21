@@ -56,7 +56,7 @@ if __name__ == '__main__':
     dfp.addFunction(x2_fn)
     dfp.addFunction(sigmod_fn)
     dfp.addFunction(normal_dist_fn)
-    dfp.addFunction(sin_fn)
-    dfp.addFunction(cos_fn)
+    #dfp.addFunction(sin_fn)
+    #dfp.addFunction(cos_fn)
 
     dfp.draw()
